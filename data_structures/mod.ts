@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -28,4 +28,5 @@
 export * from "./binary_heap.ts";
 export * from "./binary_search_tree.ts";
 export * from "./comparators.ts";
+export * from "./deque.ts";
 export * from "./red_black_tree.ts";

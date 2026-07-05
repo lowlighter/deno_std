@@ -1,13 +1,13 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 export function checkWindows(): boolean {
   // deno-lint-ignore no-explicit-any
   const global = globalThis as any;
-  const os = global.Deno?.build?.os;
 
-  // Check Deno, then the remaining runtimes (e.g. Node, Bun and the browser)
-  return typeof os === "string"
-    ? os === "windows"
-    : global.navigator?.platform?.startsWith("Win") ??
-      global.process?.platform?.startsWith("win") ?? false;
+  // Check Node/Bun/Deno via `process.platform`, then the Deno global, then the browser
+  const platform = global.process?.platform;
+  if (typeof platform === "string") return platform.startsWith("win");
+  const os = global.Deno?.build?.os;
+  if (typeof os === "string") return os === "windows";
+  return global.navigator?.platform?.startsWith("Win") ?? false;
 }

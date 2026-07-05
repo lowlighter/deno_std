@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 import { stub } from "@std/testing/mock";
 import {
   deleteCookie,
@@ -7,6 +7,7 @@ import {
   setCookie,
 } from "./cookie.ts";
 import { assert, assertEquals, assertThrows } from "@std/assert";
+import { assertType, type IsExact } from "@std/testing/types";
 
 Deno.test({
   name: "getCookies() parses cookie",
@@ -32,6 +33,27 @@ Deno.test({
       wide: "1",
       SID: "123",
     });
+
+    headers = new Headers();
+    headers.set("Cookie", "=");
+    assertThrows(() => getCookies(headers));
+  },
+});
+
+Deno.test({
+  name: "getCookies() has correct types",
+  fn() {
+    const headers = new Headers([["Cookie", "foo=bar"]]);
+    const cookies = getCookies(headers);
+    // Return type is Partial<Record<string, string>> so arbitrary key access
+    // surfaces as `string | undefined` regardless of `noUncheckedIndexedAccess`.
+    // Closes the type/runtime gap reported in #6852 and #7053 — at runtime the
+    // returned object is null-prototyped, so missing keys really are undefined.
+    assertType<IsExact<typeof cookies, Partial<Record<string, string>>>>(true);
+    const baz: string | undefined = cookies.baz;
+    assertEquals(baz, undefined);
+    assertEquals(Object.getPrototypeOf(cookies), null);
+    assertEquals(cookies.toString, undefined);
   },
 });
 

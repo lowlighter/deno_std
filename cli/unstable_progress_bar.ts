@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { formatUnitFraction } from "./_unit.ts";
 
@@ -12,11 +12,10 @@ export interface ProgressBarFormatter {
    */
   styledTime: string;
   /**
-   * A function that returns a formatted version of the data received.
+   * A formatted version of the data received.
    * `0.40/97.66 KiB`
-   * @param fractions The number of decimal places the values should have.
    */
-  styledData: (fractions?: number) => string;
+  styledData: string;
   /**
    * The progress bar string.
    * Default Style: `###-------`
@@ -93,12 +92,18 @@ export interface ProgressBarOptions {
    * @default {true}
    */
   keepOpen?: boolean;
+  /**
+   * The time between each frame of the progress bar in milliseconds.
+   *
+   * @default {1000}
+   */
+  interval?: number;
 }
 
 const LINE_CLEAR = "\r\u001b[K";
 
 function defaultFormatter(formatter: ProgressBarFormatter) {
-  return `[${formatter.styledTime}] [${formatter.progressBar}] [${formatter.styledData()}]`;
+  return `[${formatter.styledTime}] [${formatter.progressBar}] [${formatter.styledData}]`;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -144,7 +149,7 @@ function clamp(value: number, min: number, max: number) {
  * const bar = new ProgressBar({
  *   max: 100,
  *   formatter(formatter) {
- *     return `[${formatter.styledTime()}] [${formatter.progressBar}] [${formatter.value}/${formatter.max} files]`;
+ *     return `[${formatter.styledTime}] [${formatter.progressBar}] [${formatter.value}/${formatter.max} files]`;
  *   },
  * });
  *
@@ -188,7 +193,7 @@ export class ProgressBar {
   max: number;
 
   #writer: WritableStreamDefaultWriter;
-  #id: number;
+  #id;
   #startTime: number;
   #previousTime: number;
   #previousValue: number;
@@ -217,6 +222,7 @@ export class ProgressBar {
       clear = false,
       formatter = defaultFormatter,
       keepOpen = true,
+      interval = 1000,
     } = options;
     this.value = value;
     this.max = max;
@@ -236,7 +242,7 @@ export class ProgressBar {
     this.#previousTime = 0;
     this.#previousValue = this.value;
 
-    this.#id = setInterval(() => this.#print(), 1000);
+    this.#id = setInterval(() => this.#print(), interval);
     this.#print();
   }
   #createFormatterObject() {
@@ -253,7 +259,7 @@ export class ProgressBar {
         const seconds = (this.time / 1000 % 60 | 0).toString().padStart(2, "0");
         return `${minutes}:${seconds}`;
       },
-      styledData() {
+      get styledData() {
         return formatUnitFraction(this.value, this.max);
       },
       progressBar: `${fillChars}${emptyChars}`,

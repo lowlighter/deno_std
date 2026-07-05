@@ -60,12 +60,13 @@ jobs:
             io(/unstable)?
             json(/unstable)?
             jsonc(/unstable)?
-            log(/unstable)?
+            math(/unstable)?
             media-types(/unstable)?
             msgpack(/unstable)?
             net(/unstable)?
             path(/unstable)?
             random(/unstable)?
+            rate-limit(/unstable)?
             regexp(/unstable)?
             semver(/unstable)?
             streams(/unstable)?
@@ -76,4 +77,5 @@ jobs:
             ulid(/unstable)?
             uuid(/unstable)?
             webgpu(/unstable)?
+            xml(/unstable)?
             yaml(/unstable)?

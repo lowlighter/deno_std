@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 /** A mocking and spying library.
  *
@@ -293,7 +293,7 @@
  * } from "@std/testing/mock";
  * import { FakeTime } from "@std/testing/time";
  *
- * function secondInterval(cb: () => void): number {
+ * function secondInterval(cb: () => void) {
  *   return setInterval(cb, 1000);
  * }
  *

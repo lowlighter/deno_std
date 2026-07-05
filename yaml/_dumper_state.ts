@@ -1,7 +1,7 @@
 // Ported from js-yaml v3.13.1:
 // https://github.com/nodeca/js-yaml/commit/665aadda42349dcae869f12040d9b10ef18d12da
 // Copyright 2011-2015 by Vitaly Puzrin. All rights reserved. MIT license.
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import {
   AMPERSAND,
@@ -57,7 +57,7 @@ const ESCAPE_SEQUENCES = new Map<number, string>([
   [0x2029, "\\P"],
 ]);
 
-const DEPRECATED_BOOLEANS_SYNTAX = [
+const DEPRECATED_BOOLEANS_SYNTAX = new Set([
   "y",
   "Y",
   "yes",
@@ -74,7 +74,7 @@ const DEPRECATED_BOOLEANS_SYNTAX = [
   "off",
   "Off",
   "OFF",
-];
+]);
 
 /**
  * Encodes a Unicode character code point as a hexadecimal escape sequence.
@@ -192,7 +192,7 @@ function chooseScalarStyle(
   let hasLineBreak = false;
   let hasFoldableLine = false; // only checked if shouldTrackWidth
   let previousLineBreak = -1; // count the first line correctly
-  let plain = isPlainSafeFirst(string.charCodeAt(0)) &&
+  let plain = isPlainSafeFirst(string.codePointAt(0)!) &&
     !isWhiteSpace(string.charCodeAt(string.length - 1));
 
   let char: number;
@@ -201,16 +201,19 @@ function chooseScalarStyle(
     // Case: no block styles.
     // Check for disallowed characters to rule out plain and single.
     for (i = 0; i < string.length; i++) {
-      char = string.charCodeAt(i);
+      // iterate by code point so astral characters (e.g. emoji) are inspected
+      // as a whole rather than as their non-printable surrogate halves
+      char = string.codePointAt(i)!;
       if (!isPrintable(char)) {
         return STYLE_DOUBLE;
       }
       plain = plain && isPlainSafe(char);
+      if (char > 0xffff) i++;
     }
   } else {
     // Case: block styles permitted.
     for (i = 0; i < string.length; i++) {
-      char = string.charCodeAt(i);
+      char = string.codePointAt(i)!;
       if (char === LINE_FEED) {
         hasLineBreak = true;
         // Check if any line can be folded.
@@ -225,6 +228,7 @@ function chooseScalarStyle(
         return STYLE_DOUBLE;
       }
       plain = plain && isPlainSafe(char);
+      if (char > 0xffff) i++;
     }
     // in case the end is missing a \n
     hasFoldableLine = hasFoldableLine ||
@@ -341,26 +345,15 @@ function foldString(string: string, width: number): string {
 // Escapes a double-quoted string.
 function escapeString(string: string): string {
   let result = "";
-  let char;
-  let nextChar;
-  let escapeSeq;
-
   for (let i = 0; i < string.length; i++) {
-    char = string.charCodeAt(i);
-    // Check for surrogate pairs (reference Unicode 3.0 section "3.7 Surrogates").
-    if (char >= 0xd800 && char <= 0xdbff /* high surrogate */) {
-      nextChar = string.charCodeAt(i + 1);
-      if (nextChar >= 0xdc00 && nextChar <= 0xdfff /* low surrogate */) {
-        // Combine the surrogate pair and store it escaped.
-        result += charCodeToHexString(
-          (char - 0xd800) * 0x400 + nextChar - 0xdc00 + 0x10000,
-        );
-        // Advance index one extra since we already used that char here.
-        i++;
-        continue;
-      }
+    const char = string.codePointAt(i)!;
+    if (char > 0xffff) {
+      // an astral code point — store it escaped and skip its low surrogate
+      result += charCodeToHexString(char);
+      i++;
+      continue;
     }
-    escapeSeq = ESCAPE_SEQUENCES.get(char);
+    const escapeSeq = ESCAPE_SEQUENCES.get(char);
     result += !escapeSeq && isPrintable(char)
       ? string[i]
       : escapeSeq || charCodeToHexString(char);
@@ -383,21 +376,28 @@ function blockHeader(string: string, indentPerLevel: number): string {
   return `${indentIndicator}${chomp}\n`;
 }
 
-function inspectNode(
-  object: unknown,
-  objects: Set<unknown>,
-  duplicateObjects: Set<unknown>,
-) {
-  if (!isObject(object)) return;
-  if (objects.has(object)) {
-    duplicateObjects.add(object);
-    return;
+function getDuplicateObjects(root: unknown): unknown[] {
+  const seenObjects = new Set();
+  const duplicateObjects = new Set();
+  const queue = [root];
+
+  for (let i = 0; i < queue.length; i++) {
+    const value = queue[i];
+    if (!isObject(value)) continue;
+    if (seenObjects.has(value)) {
+      duplicateObjects.add(value);
+      continue;
+    }
+    seenObjects.add(value);
+    const children = Array.isArray(value) ? value : Object.values(value);
+    queue.push(...children);
   }
-  objects.add(object);
-  const entries = Array.isArray(object) ? object : Object.values(object);
-  for (const value of entries) {
-    inspectNode(value, objects, duplicateObjects);
-  }
+
+  return [...duplicateObjects];
+}
+function stringifyValue(value: unknown, tag: string | null) {
+  if (tag !== null && tag !== "?") return `!<${tag}> ${value}`;
+  return value as string;
 }
 
 export interface DumperStateOptions {
@@ -426,7 +426,7 @@ export interface DumperStateOptions {
    * if first argument is less than second argument, zero if they're equal
    * and a positive value otherwise.
    */
-  sortKeys?: boolean | ((a: string, b: string) => number);
+  sortKeys?: boolean | ((a: string, b: string, depth: number) => number);
   /** set max line width. (default: 80) */
   lineWidth?: number;
   /**
@@ -460,7 +460,7 @@ export class DumperState {
   arrayIndent: boolean;
   skipInvalid: boolean;
   flowLevel: number;
-  sortKeys: boolean | ((a: string, b: string) => number);
+  sortKeys: boolean | ((a: string, b: string, depth: number) => number);
   lineWidth: number;
   useAnchors: boolean;
   compatMode: boolean;
@@ -514,7 +514,7 @@ export class DumperState {
     if (string.length === 0) {
       return "''";
     }
-    if (this.compatMode && DEPRECATED_BOOLEANS_SYNTAX.includes(string)) {
+    if (this.compatMode && DEPRECATED_BOOLEANS_SYNTAX.has(string)) {
       return `'${string}'`;
     }
 
@@ -660,7 +660,8 @@ export class DumperState {
       keys.sort();
     } else if (typeof this.sortKeys === "function") {
       // Custom sort function
-      keys.sort(this.sortKeys);
+      const sortKeys = this.sortKeys;
+      keys.sort((a, b) => sortKeys(a, b, level));
     } else if (this.sortKeys) {
       // Something is wrong
       throw new TypeError(
@@ -757,12 +758,16 @@ export class DumperState {
     if (block) {
       block = this.flowLevel < 0 || this.flowLevel > level;
     }
+
     if (typeof value === "string" || value instanceof String) {
       value = value instanceof String ? value.valueOf() : value;
       if (tag !== "?") {
         value = this.stringifyScalar(value as string, { level, isKey });
       }
-    } else if (isObject(value)) {
+      return stringifyValue(value, tag);
+    }
+
+    if (isObject(value)) {
       const duplicateIndex = this.duplicates.indexOf(value);
       const duplicate = duplicateIndex !== -1;
 
@@ -770,6 +775,7 @@ export class DumperState {
         if (this.usedDuplicates.has(value)) return `*ref_${duplicateIndex}`;
         this.usedDuplicates.add(value);
       }
+
       if (
         (tag !== null && tag !== "?") ||
         duplicate ||
@@ -777,6 +783,7 @@ export class DumperState {
       ) {
         compact = false;
       }
+
       if (Array.isArray(value)) {
         const arrayLevel = !this.arrayIndent && level > 0 ? level - 1 : level;
         if (block && value.length !== 0) {
@@ -784,46 +791,33 @@ export class DumperState {
             level: arrayLevel,
             compact,
           });
-          if (duplicate) {
-            value = `&ref_${duplicateIndex}${value}`;
-          }
-        } else {
-          value = this.stringifyFlowSequence(value, { level: arrayLevel });
-          if (duplicate) {
-            value = `&ref_${duplicateIndex} ${value}`;
-          }
+          if (duplicate) value = `&ref_${duplicateIndex}${value}`;
+          return stringifyValue(value, tag);
         }
-      } else {
-        if (block && Object.keys(value).length !== 0) {
-          value = this.stringifyBlockMapping(value, { tag, level, compact });
-          if (duplicate) {
-            value = `&ref_${duplicateIndex}${value}`;
-          }
-        } else {
-          value = this.stringifyFlowMapping(value, { level });
-          if (duplicate) {
-            value = `&ref_${duplicateIndex} ${value}`;
-          }
-        }
+
+        value = this.stringifyFlowSequence(value, { level: arrayLevel });
+        if (duplicate) value = `&ref_${duplicateIndex} ${value}`;
+        return stringifyValue(value, tag);
       }
-    } else {
-      if (this.skipInvalid) return null;
-      throw new TypeError(`Cannot stringify ${typeof value}`);
+
+      if (block && Object.keys(value).length !== 0) {
+        value = this.stringifyBlockMapping(value, { tag, level, compact });
+        if (duplicate) value = `&ref_${duplicateIndex}${value}`;
+        return stringifyValue(value, tag);
+      }
+
+      value = this.stringifyFlowMapping(value, { level });
+      if (duplicate) value = `&ref_${duplicateIndex} ${value}`;
+      return stringifyValue(value, tag);
     }
 
-    if (tag !== null && tag !== "?") {
-      value = `!<${tag}> ${value}`;
-    }
-
-    return value as string;
+    if (this.skipInvalid) return null;
+    throw new TypeError(`Cannot stringify ${typeof value}`);
   }
 
   stringify(value: unknown): string {
     if (this.useAnchors) {
-      const values: Set<unknown> = new Set();
-      const duplicateObjects: Set<unknown> = new Set();
-      inspectNode(value, values, duplicateObjects);
-      this.duplicates = [...duplicateObjects];
+      this.duplicates = getDuplicateObjects(value);
       this.usedDuplicates = new Set();
     }
 

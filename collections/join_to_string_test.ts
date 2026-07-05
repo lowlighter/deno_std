@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertEquals } from "@std/assert";
 import { joinToString } from "./join_to_string.ts";
@@ -142,5 +142,16 @@ Deno.test({
     });
 
     assertEquals(out, "result: Kim and others are winners");
+  },
+});
+
+Deno.test({
+  name: "joinToString() passes index to selector",
+  fn() {
+    const arr = ["Kim", "Anna", "Tim"];
+
+    const out = joinToString(arr, (it, index) => it + index);
+
+    assertEquals(out, "Kim0,Anna1,Tim2");
   },
 });

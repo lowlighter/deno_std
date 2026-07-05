@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // Structured similarly to Go's cookie.go
 // https://github.com/golang/go/blob/master/src/net/http/cookie.go
 // This module is browser compatible.
@@ -173,10 +173,7 @@ function validateName(name: string | undefined | null) {
  * See {@link https://www.rfc-editor.org/rfc/rfc6265.html#section-4.1.2.4}.
  * @param path Path value.
  */
-function validatePath(path: string | null) {
-  if (path === null) {
-    return;
-  }
+function validatePath(path: string) {
   for (let i = 0; i < path.length; i++) {
     const c = path.charAt(i);
     if (
@@ -193,10 +190,10 @@ function validatePath(path: string | null) {
 /**
  * Validate Cookie Value.
  * See {@link https://www.rfc-editor.org/rfc/rfc6265.html#section-4.1}.
+ * @param name Cookie name.
  * @param value Cookie value.
  */
-function validateValue(name: string, value: string | null) {
-  if (value === null) return;
+function validateValue(name: string, value: string) {
   for (let i = 0; i < value.length; i++) {
     const c = value.charAt(i);
     if (
@@ -236,6 +233,12 @@ function validateDomain(domain: string) {
 /**
  * Parse cookies of a header
  *
+ * The returned object has a null prototype (so it does not inherit from
+ * `Object.prototype` — properties like `toString` or `hasOwnProperty` will be
+ * `undefined` rather than the inherited methods). The return type is
+ * `Partial<Record<string, string>>` to reflect that arbitrary key access may
+ * yield `undefined` when no cookie of that name was set.
+ *
  * @example Usage
  * ```ts
  * import { getCookies } from "@std/http/cookie";
@@ -245,28 +248,33 @@ function validateDomain(domain: string) {
  * headers.set("Cookie", "full=of; tasty=chocolate");
  *
  * const cookies = getCookies(headers);
- * assertEquals(cookies, { full: "of", tasty: "chocolate" });
+ * assertEquals(cookies.full, "of");
+ * assertEquals(cookies.tasty, "chocolate");
+ * assertEquals(cookies.missing, undefined);
  * ```
  *
  * @param headers The headers instance to get cookies from
- * @return Object with cookie names as keys
+ * @return Object with cookie names as keys (null-prototype). Values are
+ *   typed as `string | undefined` so missing-key access is caught at compile
+ *   time.
  */
-export function getCookies(headers: Headers): Record<string, string> {
+export function getCookies(
+  headers: Headers,
+): Partial<Record<string, string>> {
   const cookie = headers.get("Cookie");
+  const out: Partial<Record<string, string>> = Object.create(null);
   if (cookie !== null) {
-    const out: Record<string, string> = {};
     const c = cookie.split(";");
     for (const kv of c) {
       const [cookieKey, ...cookieVal] = kv.split("=");
-      if (cookieKey === undefined) {
+      if (cookieKey === "") {
         throw new SyntaxError("Cookie cannot start with '='");
       }
-      const key = cookieKey.trim();
+      const key = cookieKey!.trim();
       out[key] = cookieVal.join("=");
     }
-    return out;
   }
-  return {};
+  return out;
 }
 
 /**
@@ -348,13 +356,9 @@ function parseSetCookie(value: string): Cookie | null {
       return [key!, values.join("=")] as const;
     });
 
-  if (!attrs[0]) {
-    return null;
-  }
-
   const cookie: Cookie = {
-    name: attrs[0][0],
-    value: attrs[0][1],
+    name: attrs[0]![0],
+    value: attrs[0]![1],
   };
 
   for (const [key, value] of attrs.slice(1)) {

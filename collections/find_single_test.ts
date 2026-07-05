@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertEquals } from "@std/assert";
 import { findSingle } from "./find_single.ts";
@@ -101,5 +101,16 @@ Deno.test({
       [["zap", "foo", "bar", "zee"], (it) => it.startsWith("z")],
       undefined,
     );
+  },
+});
+
+Deno.test({
+  name: "findSingle() passes index to predicate",
+  fn() {
+    const result = findSingle(
+      [9, 12, 13],
+      (_, index) => index === 1,
+    );
+    assertEquals(result, 12);
   },
 });

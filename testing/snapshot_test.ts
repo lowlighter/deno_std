@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 import { stripAnsiCode } from "@std/fmt/colors";
 import { dirname, fromFileUrl, join, toFileUrl } from "@std/path";
 import {
@@ -19,16 +19,20 @@ const SNAPSHOT_MODULE_URL = toFileUrl(join(
 
 function formatTestOutput(string: string) {
   // Strip colors and obfuscate any timings
-  return stripAnsiCode(string).replace(/([0-9])+m?s/g, "--ms").replace(
-    /(?<=running ([0-9])+ test(s)? from )(.*)(?=test.ts)/g,
-    "<tempDir>/",
-  ).replace(/\(file:\/\/.+\)/g, "(file://<path>)");
+  return stripAnsiCode(string).replace(
+    /[0-9]+(?:\.[0-9]+)?(?:µ|m|n)?s/g,
+    "--ms",
+  )
+    .replace(
+      /(?<=running ([0-9])+ test(s)? from )(.*)(?=test.ts)/g,
+      "<tempDir>/",
+    ).replace(/\(file:\/\/.+\)/g, "(file://<path>)");
 }
 
 function formatTestError(string: string) {
-  // Strip colors and remove "Check file:///workspaces/deno_std/testing/.tmp/test.ts"
+  // Strip colors and remove "Check <path>" lines
   // as this is always output to stderr
-  return stripAnsiCode(string).replace(/^Check file:\/\/(.+)\n/gm, "");
+  return stripAnsiCode(string).replace(/^Check .+\n/gm, "");
 }
 
 function testFnWithTempDir(

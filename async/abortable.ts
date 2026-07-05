@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 // TODO(iuioiua): Remove `ignore` directives from following snippets
@@ -19,12 +19,12 @@
  *
  * const promise = delay(1_000);
  *
- * // Rejects with `DOMException` after 100 ms
- * await assertRejects(
+ * // Rejects with `DOMException` (name `"TimeoutError"`) after 100 ms
+ * const error = await assertRejects(
  *   () => abortable(promise, AbortSignal.timeout(100)),
  *   DOMException,
- *   "Signal timed out."
  * );
+ * assertEquals(error.name, "TimeoutError");
  * ```
  *
  * @example Error-handling an abort
@@ -67,16 +67,17 @@ export function abortable<T>(p: Promise<T>, signal: AbortSignal): Promise<T>;
  * };
  *
  * const items: string[] = [];
- * // Below throws `DOMException` after 100 ms and items become `["Hello"]`
- * await assertRejects(
+ * // Below throws `DOMException` (name `"TimeoutError"`) after 100 ms and items
+ * // become `["Hello"]`
+ * const error = await assertRejects(
  *   async () => {
  *     for await (const item of abortable(asyncIter(), AbortSignal.timeout(100))) {
  *       items.push(item);
  *     }
  *   },
  *   DOMException,
- *   "Signal timed out."
  * );
+ * assertEquals(error.name, "TimeoutError");
  * assertEquals(items, ["Hello"]);
  * ```
  *

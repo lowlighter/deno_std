@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 import { CHAR_COLON, CHAR_DOT } from "../_common/constants.ts";
@@ -20,6 +20,7 @@ import { fromFileUrl } from "./from_file_url.ts";
  *
  * @param path The path to get the extension from.
  * @returns The extension of the `path`.
+ * @throws {TypeError} If `path` is a `URL` instance whose protocol is not `file:`.
  */
 export function extname(path: string | URL): string {
   if (path instanceof URL) {

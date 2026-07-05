@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -10,6 +10,7 @@
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The smallest value of the given function or undefined if there are
  * no elements.
@@ -29,10 +30,21 @@
  *
  * assertEquals(minCount, 2);
  * ```
+ *
+ * @example Using the index parameter
+ * ```ts
+ * import { minOf } from "@std/collections/min-of";
+ * import { assertEquals } from "@std/assert";
+ *
+ * const array = [4, 3, 2, 1];
+ * const result = minOf(array, (_, index) => index);
+ *
+ * assertEquals(result, 0);
+ * ```
  */
 export function minOf<T>(
   array: Iterable<T>,
-  selector: (el: T) => number,
+  selector: (el: T, index: number) => number,
 ): number | undefined;
 /**
  * Applies the given selector to all elements of the given collection and
@@ -43,6 +55,7 @@ export function minOf<T>(
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the smallest value of the given function
  * or undefined if there are no elements.
@@ -65,26 +78,55 @@ export function minOf<T>(
  */
 export function minOf<T>(
   array: Iterable<T>,
-  selector: (el: T) => bigint,
+  selector: (el: T, index: number) => bigint,
 ): bigint | undefined;
-export function minOf<T, S extends ((el: T) => number) | ((el: T) => bigint)>(
+export function minOf<
+  T,
+  S extends
+    | ((el: T, index: number) => number)
+    | ((el: T, index: number) => bigint),
+>(
   array: Iterable<T>,
   selector: S,
 ): ReturnType<S> | undefined {
-  let minimumValue: ReturnType<S> | undefined;
+  if (Array.isArray(array)) {
+    const length = array.length;
+    if (length === 0) return undefined;
 
-  for (const element of array) {
-    const currentValue = selector(element) as ReturnType<S>;
+    let min = selector(array[0]!, 0) as ReturnType<S>;
+    if (Number.isNaN(min)) return min;
 
-    if (minimumValue === undefined || currentValue < minimumValue) {
-      minimumValue = currentValue;
-      continue;
+    for (let i = 1; i < length; i++) {
+      const currentValue = selector(array[i]!, i) as ReturnType<S>;
+      if (currentValue < min) {
+        min = currentValue;
+      } else if (Number.isNaN(currentValue)) {
+        return currentValue;
+      }
     }
 
-    if (Number.isNaN(currentValue)) {
-      return currentValue;
-    }
+    return min;
   }
 
-  return minimumValue;
+  let index = 0;
+  const iter = array[Symbol.iterator]();
+  const first = iter.next();
+
+  if (first.done) return undefined;
+
+  let min = selector(first.value, index++) as ReturnType<S>;
+  if (Number.isNaN(min)) return min;
+
+  let next = iter.next();
+  while (!next.done) {
+    const currentValue = selector(next.value, index++) as ReturnType<S>;
+    if (currentValue < min) {
+      min = currentValue;
+    } else if (Number.isNaN(currentValue)) {
+      return currentValue;
+    }
+    next = iter.next();
+  }
+
+  return min;
 }

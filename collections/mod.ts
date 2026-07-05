@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -43,6 +43,7 @@ export * from "./filter_values.ts";
 export * from "./find_single.ts";
 export * from "./first_not_nullish_of.ts";
 export * from "./includes_value.ts";
+export * from "./interleave.ts";
 export * from "./intersect.ts";
 export * from "./invert_by.ts";
 export * from "./invert.ts";

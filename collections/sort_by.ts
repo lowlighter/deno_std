@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /** Order option for {@linkcode SortByOptions}. */
@@ -24,7 +24,8 @@ export type SortByOptions = {
  * @typeParam U The type of the selected values.
  *
  * @param iterator The iterator to sort.
- * @param selector The selector function to get the value to sort by.
+ * @param selector The selector function to get the value to sort by. The
+ * function receives the element and its index.
  * @param options The options for sorting.
  *
  * @returns A new array containing all elements sorted by the selector.
@@ -114,26 +115,42 @@ export type SortByOptions = {
  *   { name: "John", startedAt: new Date("2020-06-01") },
  * ]);
  * ```
+ *
+ * @example Using the index parameter
+ * ```ts
+ * import { sortBy } from "@std/collections/sort-by";
+ * import { assertEquals } from "@std/assert";
+ *
+ * const array = [2, 3, 1];
+ * const result = sortBy(array, (_, index) => -index);
+ *
+ * assertEquals(result, [1, 3, 2]);
+ * ```
  */
 export function sortBy<T>(
   iterator: Iterable<T>,
   selector:
-    | ((el: T) => number)
-    | ((el: T) => string)
-    | ((el: T) => bigint)
-    | ((el: T) => Date),
+    | ((el: T, index: number) => number)
+    | ((el: T, index: number) => string)
+    | ((el: T, index: number) => bigint)
+    | ((el: T, index: number) => Date),
   options?: SortByOptions,
 ): T[] {
-  const array: { value: T; selected: string | number | bigint | Date }[] = [];
+  const array = Array.isArray(iterator) ? iterator : Array.from(iterator);
+  const len = array.length;
+  const selected: (string | number | bigint | Date)[] = new Array(len);
+  const indices: number[] = new Array(len);
 
-  for (const item of iterator) {
-    array.push({ value: item, selected: selector(item) });
+  for (let i = 0; i < len; i++) {
+    selected[i] = selector(array[i]!, i);
+    indices[i] = i;
   }
 
-  array.sort((oa, ob) => {
-    const a = oa.selected;
-    const b = ob.selected;
-    const order = options?.order === "desc" ? -1 : 1;
+  const order = options?.order === "desc" ? -1 : 1;
+
+  indices.sort((ia, ib) => {
+    const a = selected[ia]!;
+    const b = selected[ib]!;
 
     if (Number.isNaN(a)) return order;
     if (Number.isNaN(b)) return -order;
@@ -141,5 +158,9 @@ export function sortBy<T>(
     return order * (a > b ? 1 : a < b ? -1 : 0);
   });
 
-  return array.map((item) => item.value);
+  const result: T[] = new Array(len);
+  for (let i = 0; i < len; i++) {
+    result[i] = array[indices[i]!]!;
+  }
+  return result;
 }

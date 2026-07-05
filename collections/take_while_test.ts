@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertEquals } from "@std/assert";
 import { takeWhile } from "./take_while.ts";
@@ -89,4 +89,12 @@ Deno.test("takeWhile() handles a Map", () => {
     ["b", 2],
     ["c", 3],
   ]);
+});
+
+Deno.test("takeWhile() passes the index to the predicate", () => {
+  const arr = [1, 2, 3, 4];
+
+  const actual = takeWhile(arr, (_, index) => index < 1);
+
+  assertEquals(actual, [1]);
 });

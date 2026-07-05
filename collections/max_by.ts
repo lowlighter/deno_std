@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -9,6 +9,7 @@
  *
  * @param array The array to find the maximum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the largest value of the given function or
  * undefined if there are no elements.
@@ -28,10 +29,21 @@
  *
  * assertEquals(personWithMaxAge, { name: "Kim", age: 42 });
  * ```
+ *
+ * @example Using the index parameter
+ * ```ts
+ * import { maxBy } from "@std/collections/max-by";
+ * import { assertEquals } from "@std/assert";
+ *
+ * const array = [4, 3, 2, 1];
+ * const result = maxBy(array, (_, index) => index);
+ *
+ * assertEquals(result, 1);
+ * ```
  */
 export function maxBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => number,
+  selector: (el: T, index: number) => number,
 ): T | undefined;
 /**
  * Returns the first element that is the largest value of the given function or
@@ -41,6 +53,7 @@ export function maxBy<T>(
  *
  * @param array The array to find the maximum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the largest value of the given function or
  * undefined if there are no elements.
@@ -63,7 +76,7 @@ export function maxBy<T>(
  */
 export function maxBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => string,
+  selector: (el: T, index: number) => string,
 ): T | undefined;
 /**
  * Returns the first element that is the largest value of the given function or
@@ -73,6 +86,7 @@ export function maxBy<T>(
  *
  * @param array The array to find the maximum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the largest value of the given function or
  * undefined if there are no elements.
@@ -95,7 +109,7 @@ export function maxBy<T>(
  */
 export function maxBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => bigint,
+  selector: (el: T, index: number) => bigint,
 ): T | undefined;
 /**
  * Returns the first element that is the largest value of the given function or
@@ -105,6 +119,7 @@ export function maxBy<T>(
  *
  * @param array The array to find the maximum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the largest value of the given function or
  * undefined if there are no elements.
@@ -127,26 +142,52 @@ export function maxBy<T>(
  */
 export function maxBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => Date,
+  selector: (el: T, index: number) => Date,
 ): T | undefined;
 export function maxBy<T>(
   array: Iterable<T>,
   selector:
-    | ((el: T) => number)
-    | ((el: T) => string)
-    | ((el: T) => bigint)
-    | ((el: T) => Date),
+    | ((el: T, index: number) => number)
+    | ((el: T, index: number) => string)
+    | ((el: T, index: number) => bigint)
+    | ((el: T, index: number) => Date),
 ): T | undefined {
-  let max: T | undefined;
-  let maxValue: ReturnType<typeof selector> | undefined;
+  if (Array.isArray(array)) {
+    const length = array.length;
+    if (length === 0) return undefined;
 
-  for (const current of array) {
-    const currentValue = selector(current);
+    let max: T = array[0]!;
+    let maxValue = selector(max, 0);
 
-    if (maxValue === undefined || currentValue > maxValue) {
-      max = current;
+    for (let i = 1; i < length; i++) {
+      const current = array[i]!;
+      const currentValue = selector(current, i);
+      if (currentValue > maxValue) {
+        max = current;
+        maxValue = currentValue;
+      }
+    }
+
+    return max;
+  }
+
+  const iter = array[Symbol.iterator]();
+  const first = iter.next();
+
+  if (first.done) return undefined;
+
+  let index = 0;
+  let max: T = first.value;
+  let maxValue = selector(max, index++);
+
+  let next = iter.next();
+  while (!next.done) {
+    const currentValue = selector(next.value, index++);
+    if (currentValue > maxValue) {
+      max = next.value;
       maxValue = currentValue;
     }
+    next = iter.next();
   }
 
   return max;

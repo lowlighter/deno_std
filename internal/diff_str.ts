@@ -1,7 +1,7 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
-import type { DiffResult } from "./types.ts";
+import type { ChangedDiffResult, DiffResult } from "./types.ts";
 import { diff } from "./diff.ts";
 
 /**
@@ -35,7 +35,7 @@ export function unescape(string: string): string {
     );
 }
 
-const WHITESPACE_SYMBOLS =
+const WHITESPACE_SYMBOLS_REGEXP =
   /((?:\\[bftv]|[^\S\r\n])+|\\[rn\\]|[()[\]{}'"\r\n]|\b)/;
 
 /**
@@ -57,7 +57,7 @@ const WHITESPACE_SYMBOLS =
 export function tokenize(string: string, wordDiff = false): string[] {
   if (wordDiff) {
     return string
-      .split(WHITESPACE_SYMBOLS)
+      .split(WHITESPACE_SYMBOLS_REGEXP)
       .filter((token) => token);
   }
   const tokens: string[] = [];
@@ -177,18 +177,18 @@ export function diffStr(A: string, B: string): DiffResult<string>[] {
   const hasMoreRemovedLines = added.length < removed.length;
   const aLines = hasMoreRemovedLines ? added : removed;
   const bLines = hasMoreRemovedLines ? removed : added;
+  let bIdx = 0;
   for (const a of aLines) {
     let tokens = [] as Array<DiffResult<string>>;
-    let b: undefined | DiffResult<string>;
+    let b: undefined | ChangedDiffResult<string>;
+    const aTokens = tokenize(a.value, true);
     // Search another diff line with at least one common token
-    while (bLines.length) {
-      b = bLines.shift();
-      const tokenized = [
-        tokenize(a.value, true),
-        tokenize(b!.value, true),
-      ] as [string[], string[]];
-      if (hasMoreRemovedLines) tokenized.reverse();
-      tokens = diff(tokenized[0], tokenized[1]);
+    while (bIdx < bLines.length) {
+      b = bLines[bIdx++];
+      const bTokens = tokenize(b!.value, true);
+      tokens = hasMoreRemovedLines
+        ? diff(bTokens, aTokens)
+        : diff(aTokens, bTokens);
       if (
         tokens.some(({ type, value }) =>
           type === "common" && NON_WHITESPACE_REGEXP.test(value)

@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertEquals } from "@std/assert";
 import { sumOf } from "./sum_of.ts";
@@ -129,4 +129,12 @@ Deno.test("sumOf() handles Infinity", () => {
   const actual = sumOf(array, (i) => i);
 
   assertEquals(actual, Infinity);
+});
+
+Deno.test("sumOf() passes index to selector", () => {
+  const array = [1, 2, 3];
+
+  const actual = sumOf(array, (_, index) => index);
+
+  assertEquals(actual, 3);
 });

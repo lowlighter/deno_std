@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 import {
   assert,
   assertEquals,
@@ -61,15 +61,17 @@ Deno.test(
       expectedDigest,
     );
 
+    type Uint8Array_ = ReturnType<Uint8Array["slice"]>;
+
     assertEquals(
       encodeHex(
         await stdCrypto.subtle.digest(
           "SHA-384",
           (async function* () {
             yield new Uint16Array();
-            yield inputPieces[0] as Uint8Array;
+            yield inputPieces[0] as Uint8Array_;
             yield new ArrayBuffer(0);
-            yield inputPieces[1] as Uint8Array;
+            yield inputPieces[1] as Uint8Array_;
           })(),
         ),
       ),
@@ -348,11 +350,13 @@ Deno.test("digest() throws on invalid input", async () => {
     "Cannot digest the data: A chunk is not ArrayBuffer nor ArrayBufferView",
   );
 
+  // Only the error class is asserted: the message is produced by the Deno
+  // runtime and its wording differs across versions (e.g. "Unrecognized
+  // algorithm name" vs. "Algorithm 'BLAK' is not supported").
   await assertRejects(
     async () =>
       await stdCrypto.subtle.digest("BLAK" as DigestAlgorithmName, inputBytes),
     DOMException,
-    "Unrecognized algorithm name",
   );
 });
 
@@ -1761,11 +1765,13 @@ for (const algorithm of DIGEST_ALGORITHM_NAMES) {
 }
 
 Deno.test("digest() throws on invalid algorithm", async () => {
+  // Only the error class is asserted: the message is produced by the Deno
+  // runtime and its wording differs across versions (e.g. "Unrecognized
+  // algorithm name" vs. "Algorithm 'invalid' is not supported").
   await assertRejects(
     // @ts-ignore Algorithm name is invalid on purpose
     async () => await stdCrypto.subtle.digest("invalid", new Uint8Array(0)),
     DOMException,
-    "Unrecognized algorithm name",
   );
 });
 

@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { assertEquals } from "@std/assert";
 import { dropWhile } from "./drop_while.ts";
@@ -106,4 +106,12 @@ Deno.test("dropWhile() handles a Map", () => {
     ["e", 5],
     ["f", 6],
   ]);
+});
+
+Deno.test("dropWhile() passes index to predicate", () => {
+  const array = [20, 30, 20];
+
+  const actual = dropWhile(array, (_, index) => index < 1);
+
+  assertEquals(actual, [30, 20]);
 });

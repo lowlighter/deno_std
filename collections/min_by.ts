@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -9,6 +9,7 @@
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the smallest value of the given function
  * or undefined if there are no elements.
@@ -28,10 +29,21 @@
  *
  * assertEquals(personWithMinAge, { name: "John", age: 23 });
  * ```
+ *
+ * @example Using the index parameter
+ * ```ts
+ * import { minBy } from "@std/collections/min-by";
+ * import { assertEquals } from "@std/assert";
+ *
+ * const array = [4, 3, 2, 1];
+ * const result = minBy(array, (_, index) => index);
+ *
+ * assertEquals(result, 4);
+ * ```
  */
 export function minBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => number,
+  selector: (el: T, index: number) => number,
 ): T | undefined;
 /**
  * Returns the first element that is the smallest value of the given function or
@@ -41,6 +53,7 @@ export function minBy<T>(
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the smallest value of the given function
  * or undefined if there are no elements.
@@ -63,7 +76,7 @@ export function minBy<T>(
  */
 export function minBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => string,
+  selector: (el: T, index: number) => string,
 ): T | undefined;
 /**
  * Returns the first element that is the smallest value of the given function or
@@ -73,6 +86,7 @@ export function minBy<T>(
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the smallest value of the given function
  * or undefined if there are no elements.
@@ -95,7 +109,7 @@ export function minBy<T>(
  */
 export function minBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => bigint,
+  selector: (el: T, index: number) => bigint,
 ): T | undefined;
 /**
  * Returns the first element that is the smallest value of the given function or
@@ -105,6 +119,7 @@ export function minBy<T>(
  *
  * @param array The array to find the minimum element in.
  * @param selector The function to get the value to compare from each element.
+ * The function receives the element and its index.
  *
  * @returns The first element that is the smallest value of the given function
  * or undefined if there are no elements.
@@ -125,26 +140,52 @@ export function minBy<T>(
  */
 export function minBy<T>(
   array: Iterable<T>,
-  selector: (el: T) => Date,
+  selector: (el: T, index: number) => Date,
 ): T | undefined;
 export function minBy<T>(
   array: Iterable<T>,
   selector:
-    | ((el: T) => number)
-    | ((el: T) => string)
-    | ((el: T) => bigint)
-    | ((el: T) => Date),
+    | ((el: T, index: number) => number)
+    | ((el: T, index: number) => string)
+    | ((el: T, index: number) => bigint)
+    | ((el: T, index: number) => Date),
 ): T | undefined {
-  let min: T | undefined;
-  let minValue: ReturnType<typeof selector> | undefined;
+  if (Array.isArray(array)) {
+    const length = array.length;
+    if (length === 0) return undefined;
 
-  for (const current of array) {
-    const currentValue = selector(current);
+    let min: T = array[0]!;
+    let minValue = selector(min, 0);
 
-    if (minValue === undefined || currentValue < minValue) {
-      min = current;
+    for (let i = 1; i < length; i++) {
+      const current = array[i]!;
+      const currentValue = selector(current, i);
+      if (currentValue < minValue) {
+        min = current;
+        minValue = currentValue;
+      }
+    }
+
+    return min;
+  }
+
+  let index = 0;
+  const iter = array[Symbol.iterator]();
+  const first = iter.next();
+
+  if (first.done) return undefined;
+
+  let min: T = first.value;
+  let minValue = selector(min, index++);
+
+  let next = iter.next();
+  while (!next.done) {
+    const currentValue = selector(next.value, index++);
+    if (currentValue < minValue) {
+      min = next.value;
       minValue = currentValue;
     }
+    next = iter.next();
   }
 
   return min;

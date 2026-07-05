@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 import { dropLastWhile } from "./drop_last_while.ts";
 import { assertEquals } from "@std/assert";
 
@@ -79,4 +79,12 @@ Deno.test("dropLastWhile() handles a generator", () => {
   }
   const actual = dropLastWhile(gen(), (i) => i > 30);
   assertEquals(actual, [20]);
+});
+
+Deno.test("dropLastWhile() passes index to predicate", () => {
+  const array = [20, 30, 20];
+
+  const actual = dropLastWhile(array, (_, index) => index > 1);
+
+  assertEquals(actual, [20, 30]);
 });

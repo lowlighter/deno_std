@@ -1,5 +1,7 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
+
+import type { Uint8Array_ } from "./_types.ts";
 
 /**
  * The function takes a `ReadableStream<Uint8Array>` and wraps it in a BYOB
@@ -62,7 +64,7 @@ export function toByteStream(
         if (value.length > size) {
           buffer.set(value.subarray(0, size));
           controller.byobRequest!.respond(size);
-          controller.enqueue(value.subarray(size));
+          controller.enqueue(value.subarray(size) as Uint8Array_);
         } else {
           buffer.set(value);
           controller.byobRequest!.respond(value.length);

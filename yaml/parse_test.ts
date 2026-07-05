@@ -1,9 +1,10 @@
 // Ported from js-yaml v3.13.1:
 // https://github.com/nodeca/js-yaml/commit/665aadda42349dcae869f12040d9b10ef18d12da
 // Copyright 2011-2015 by Vitaly Puzrin. All rights reserved. MIT license.
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 
 import { parse, parseAll } from "./parse.ts";
+import { type ImplicitType, parse as unstableParse } from "./unstable_parse.ts";
 import {
   assert,
   assertEquals,
@@ -132,6 +133,14 @@ regexp: !!js/regexp bar
     ];
 
     assertEquals(parseAll(yaml, { schema: "extended" }), expected);
+  },
+});
+
+Deno.test({
+  name: "parseAll() throws SyntaxError on invalid YAML",
+  fn() {
+    assertThrows(() => parseAll(`"`), SyntaxError);
+    assertThrows(() => parseAll(`---\nfoo: bar\n---\n"`), SyntaxError);
   },
 });
 
@@ -488,6 +497,36 @@ Deno.test({
       () => parse("--- !!omap\n- foo: 1\n- foo: 2"),
       SyntaxError,
       "Cannot resolve a node with !<tag:yaml.org,2002:omap> explicit tag",
+    );
+  },
+});
+
+Deno.test({
+  name: "unstableParse() handles custom types",
+  fn() {
+    const foo: ImplicitType = {
+      tag: "tag:custom:smile",
+      resolve: (data: string): boolean => data === "=)",
+      construct: (): string => "🙂",
+      predicate: (data: unknown): data is string => data === "🙂",
+      kind: "scalar",
+      represent: (): string => "=)",
+    };
+
+    assertEquals(
+      unstableParse(
+        `
+title: =)
+tags:
+  - =)
+  - bar
+`,
+        { extraTypes: [foo] },
+      ),
+      {
+        title: "🙂",
+        tags: ["🙂", "bar"],
+      },
     );
   },
 });
@@ -1038,6 +1077,29 @@ Deno.test("parse() throws at reseverd characters '`' and '@'", () => {
     SyntaxError,
     "end of the stream or a document separator is expected at line 1, column 1:\n    @\n    ^",
   );
+});
+
+Deno.test("parse() does not pollute prototype with `__proto__` key", () => {
+  // A YAML key of `__proto__` must produce an own property on the result,
+  // not mutate the result's prototype chain.
+  const result = parse("__proto__:\n  polluted: true") as Record<
+    string,
+    unknown
+  >;
+  assert(Object.hasOwn(result, "__proto__"));
+  assertEquals(
+    (result as { __proto__: unknown }).__proto__,
+    { polluted: true },
+  );
+  // Same guarantee for the merge type (which goes through `mergeMappings`).
+  const merged = parse(`<<:
+  __proto__:
+    polluted: true
+ok: 1`) as Record<string, unknown>;
+  assert(Object.hasOwn(merged, "__proto__"));
+  assertEquals(merged.ok, 1);
+  // Sanity: an unrelated object's prototype is untouched.
+  assertEquals(({} as { polluted?: unknown }).polluted, undefined);
 });
 
 Deno.test("parse() handles sequence", () => {

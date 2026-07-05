@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 /**
@@ -28,9 +28,21 @@ export function stringify(object: Record<string, string>): string {
         `key starts with a '#' indicates a comment and is ignored: '${key}'`,
       );
       continue;
-    } else if (escapedValue.includes("\n") || escapedValue.includes("'")) {
-      // escape inner new lines
-      escapedValue = escapedValue.replaceAll("\n", "\\n");
+    } else if (
+      escapedValue.includes("\n") ||
+      escapedValue.includes("\r") ||
+      escapedValue.includes("\t") ||
+      escapedValue.includes("'") ||
+      escapedValue.includes("\\")
+    ) {
+      // Escape backslashes first so we don't double-escape sequences we add
+      // below (e.g. so a literal `\n` (backslash-n) is preserved distinctly
+      // from a real newline).
+      escapedValue = escapedValue
+        .replaceAll("\\", "\\\\")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\r", "\\r")
+        .replaceAll("\t", "\\t");
       quote = `"`;
     } else if (escapedValue.match(/\W/)) {
       quote = "'";

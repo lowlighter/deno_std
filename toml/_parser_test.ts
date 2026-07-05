@@ -1,4 +1,4 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 import { assertEquals, assertThrows } from "@std/assert";
 import {
   arrayValue,
@@ -489,7 +489,7 @@ Deno.test({
 Deno.test({
   name: "(private) deepAssign() works correctly",
   fn() {
-    const source = {
+    const source: Record<string, unknown> = {
       foo: {
         items: [
           {
@@ -528,7 +528,7 @@ Deno.test({
                 email: {
                   x: { main: "mail@example.com" },
                 },
-              } as unknown,
+              },
             },
           ],
         },

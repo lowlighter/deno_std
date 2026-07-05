@@ -1,7 +1,7 @@
 // Ported from js-yaml v3.13.1:
 // https://github.com/nodeca/js-yaml/commit/665aadda42349dcae869f12040d9b10ef18d12da
 // Copyright 2011-2015 by Vitaly Puzrin. All rights reserved. MIT license.
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // This module is browser compatible.
 
 import { isEOL } from "./_chars.ts";
@@ -26,10 +26,10 @@ export interface ParseOptions {
    */
   allowDuplicateKeys?: boolean;
   /**
-   * If defined, a function to call on warning messages taking an
-   * {@linkcode Error} as its only argument.
+   * If defined, a function to call on warning messages taking a
+   * {@linkcode SyntaxError} as its only argument.
    */
-  onWarning?(error: Error): void;
+  onWarning?(error: SyntaxError): void;
 }
 
 function sanitizeInput(input: string) {
@@ -42,9 +42,6 @@ function sanitizeInput(input: string) {
     // Strip BOM
     if (input.charCodeAt(0) === 0xfeff) input = input.slice(1);
   }
-
-  // Use 0 as string terminator. That significantly simplifies bounds check.
-  input += "\0";
 
   return input;
 }
@@ -67,7 +64,8 @@ function sanitizeInput(input: string) {
  * assertEquals(data, { id: 1, name: "Alice" });
  * ```
  *
- * @throws {SyntaxError} Throws error on invalid YAML.
+ * @throws {SyntaxError} Throws if the YAML is invalid or contains more than
+ * one document.
  * @param content YAML string to parse.
  * @param options Parsing options.
  * @returns Parsed document.
@@ -114,11 +112,15 @@ export function parse(
  * assertEquals(data, [ { id: 1, name: "Alice" }, { id: 2, name: "Bob" }, { id: 3, name: "Eve" }]);
  * ```
  *
+ * @throws {SyntaxError} Throws if the YAML is invalid.
  * @param content YAML string to parse.
  * @param options Parsing options.
  * @returns Array of parsed documents.
  */
-export function parseAll(content: string, options: ParseOptions = {}): unknown {
+export function parseAll(
+  content: string,
+  options: ParseOptions = {},
+): unknown[] {
   content = sanitizeInput(content);
   const state = new LoaderState(content, {
     ...options,

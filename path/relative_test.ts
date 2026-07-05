@@ -1,10 +1,11 @@
-// Copyright 2018-2025 the Deno authors. MIT license.
+// Copyright 2018-2026 the Deno authors. MIT license.
 // Copyright the Browserify authors. MIT License.
 // Ported from https://github.com/browserify/path-browserify/
 import { assertEquals } from "@std/assert";
 import * as posix from "./posix/mod.ts";
 import * as windows from "./windows/mod.ts";
 import { relative } from "./relative.ts";
+import process from "node:process";
 
 const relativeTests = {
   // arguments                     result
@@ -68,7 +69,7 @@ Deno.test("windows.relative()", function () {
 });
 
 Deno.test("relative() returns current working directory if input is empty", function () {
-  const pwd = Deno.cwd();
+  const pwd = process.cwd();
   assertEquals(relative("", pwd), "");
   assertEquals(relative(pwd, ""), "");
   assertEquals(relative(pwd, pwd), "");
