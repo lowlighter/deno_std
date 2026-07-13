@@ -14,6 +14,8 @@ export interface DebouncedFunction<T extends Array<unknown>> {
   flush(): void;
   /** Returns a boolean whether a debounce call is pending or not. */
   readonly pending: boolean;
+  /** The original function that was passed to {@linkcode debounce}. */
+  readonly raw: (...args: T) => void;
 }
 
 /** Options for {@linkcode debounce}. */
@@ -113,6 +115,8 @@ export function debounce<T extends Array<any>>(
   Object.defineProperty(debounced, "pending", {
     get: () => timeout !== null,
   });
+
+  debounced.raw = fn;
 
   const signal = options?.signal;
   if (signal) {

@@ -157,3 +157,25 @@ Deno.test("debounce() throws if signal is already aborted", () => {
     DOMException,
   );
 });
+
+Deno.test("debounce() raw calls the original function directly", () => {
+  let called = 0;
+  const fn = () => called++;
+  const d = debounce(fn, 100);
+  d.raw();
+  assertEquals(called, 1);
+  assertEquals(d.pending, false);
+  d.raw();
+  d.raw();
+  assertEquals(called, 3);
+});
+
+Deno.test("debounce() raw bypasses debounce when pending", () => {
+  let called = 0;
+  const d = debounce(() => called++, 100);
+  d();
+  assertEquals(d.pending, true);
+  d.raw();
+  assertEquals(called, 1);
+  assertEquals(d.pending, true);
+});
