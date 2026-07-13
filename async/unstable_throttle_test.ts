@@ -179,3 +179,25 @@ Deno.test("throttle() handles dynamic timeframe", () => {
   time.tick(2);
   assertEquals(fn.throttling, false);
 });
+
+Deno.test("throttle() raw calls the original function directly", () => {
+  let called = 0;
+  const fn = throttle(() => called++, 100);
+  fn.raw();
+  assertEquals(called, 1);
+  fn.raw();
+  fn.raw();
+  assertEquals(called, 3);
+  assertEquals(fn.throttling, false);
+});
+
+Deno.test("throttle() raw bypasses throttle when throttling", () => {
+  let called = 0;
+  const t = throttle(() => called++, 100);
+  t();
+  assertEquals(t.throttling, true);
+  assertEquals(called, 1);
+  t.raw();
+  assertEquals(called, 2);
+  assertEquals(t.throttling, true);
+});

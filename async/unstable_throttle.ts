@@ -36,6 +36,8 @@ export interface ThrottledFunction<T extends Array<unknown>> {
    * It is set to `-Infinity` if it has not been called yet, or reset is called after the last call.
    */
   readonly lastExecution: number;
+  /** The original function that was passed to {@linkcode throttle}. */
+  readonly raw: (...args: T) => void;
 }
 
 /**
@@ -163,6 +165,8 @@ export function throttle<T extends Array<any>>(
     },
     lastExecution: { get: () => lastExecution },
   });
+
+  throttled.raw = fn;
 
   return throttled;
 }
