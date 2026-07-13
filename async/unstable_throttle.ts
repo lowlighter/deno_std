@@ -166,7 +166,11 @@ export function throttle<T extends Array<any>>(
     lastExecution: { get: () => lastExecution },
   });
 
-  throttled.raw = fn;
+  Object.defineProperty(throttled, "raw", {
+    value: fn,
+    writable: false,
+    enumerable: true,
+  });
 
   return throttled;
 }

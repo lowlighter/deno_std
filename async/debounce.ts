@@ -116,7 +116,11 @@ export function debounce<T extends Array<any>>(
     get: () => timeout !== null,
   });
 
-  debounced.raw = fn;
+  Object.defineProperty(debounced, "raw", {
+    value: fn,
+    writable: false,
+    configurable: false,
+  });
 
   const signal = options?.signal;
   if (signal) {
